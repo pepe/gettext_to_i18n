@@ -2,8 +2,9 @@ module GettextToI18n
   class GettextI18nConvertor
     attr_accessor :text
     
-    GETTEXT_VARIABLES = /\%\{(\w+)\}*/
     QUOTES_REGEX = /\_\(['"]([^'"]*)['"]\)/
+    VARIABLES_REGEX = /\%[\s]+\{(.*)\}/
+    VARIABLE_REGEX = /\s*:(\w+)\s*=>\s*(.*)/
 
     
     def initialize(text, namespace = nil)
@@ -11,38 +12,34 @@ module GettextToI18n
       @namespace = namespace
     end
     
-    # The contents of the method call
+    # gets contents of the method call
     def call_content
-      return (res = @text.match(QUOTES_REGEX)) ? res[1] : nil
+      return @text.match(QUOTES_REGEX) ? $1 : nil
     end
     
-    def content_i18n
+
+    # gets content of gettext message
+    def content_gettext
       if content = call_content
-        content.gsub!(GETTEXT_VARIABLES, '{{\1}}')
+        content.gsub!(VARIABLES_REGEX, '{{\1}}')
       else
         puts "No content: " + @text
       end
       return content
     end
     
-
-    
     # Returns the part after the method call, 
     # _('aaa' % :a => 'sdf', :b => 'agh') 
     # return :a => 'sdf', :b => 'agh'
     def variable_part
-      @variable_part_cached ||= begin
-          result = /\%[\s]+\{(.*)\}/.match(@text)
-          if result
-              result[1]
-          end
-      end
+      @variable_part ||= @text.match(VARIABLES_REGEX) ? $1 : nil
     end
     
     # Extract the variables out of a gettext variable part
     # We cannot simply split the variable part on a comma, because it
     # can contain gettext calls itself.
     # Example: :a => 'a', :b => 'b' => [":a => 'a'", ":b => 'b'"]
+    # TODO clean up if it's possible
     def get_variables_splitted
       return if variable_part.nil? 
       in_double_quote = in_single_quote = false
