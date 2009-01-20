@@ -3,6 +3,8 @@ module GettextToI18n
     attr_accessor :text
     
     GETTEXT_VARIABLES = /\%\{(\w+)\}*/
+    QUOTES_REGEX = /\_\(['"]([^'"]*)['"]\)/
+
     
     def initialize(text, namespace = nil)
       @text = text
@@ -10,33 +12,17 @@ module GettextToI18n
     end
     
     # The contents of the method call
-    def contents
-      #if result = /\_\([\"\']?([^\'\"]*)[\"\']?.*\)/.match(@text)
-      
-      #if result = /\_\(([\']?([^\']*)[\'])|([\"]?([^\"]*)[\"])?.*\)/.match(@text)
-      single_quotes = /\_\(\'([^']*)\'.*\)/.match(@text)
-      double_quotes = /\_\(\"([^"]*)\".*\)/.match(@text)
-      
-      if single_quotes
-        return single_quotes[1]
-      elsif double_quotes
-        return double_quotes[1]
-      else
-        return nil
-      end
+    def call_content
+      return (res = @text.match(QUOTES_REGEX)) ? res[1] : nil
     end
     
-    def contents_i18n
-      c = contents
-      unless c.nil?
-        c.gsub!(GETTEXT_VARIABLES, '{{\1}}')
-        c.gsub!(/^(\"|\')/, '')
-        c.gsub!(/(\"|\')$/, '')
+    def content_i18n
+      if content = call_content
+        content.gsub!(GETTEXT_VARIABLES, '{{\1}}')
       else
         puts "No content: " + @text
-        
       end
-      c
+      return content
     end
     
 
@@ -95,7 +81,7 @@ module GettextToI18n
     # it is now time to construct the actual i18n call
     def to_i18n
       id = @namespace.consume_id!
-      @namespace.set_id(id, contents_i18n)
+      @namespace.set_id(id, content_i18n)
       output = "t(:#{id}"
       if !self.variables.nil?
           vars = self.variables.collect { |h| {:name => h[:name], :value => h[:value] }}
