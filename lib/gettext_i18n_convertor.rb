@@ -2,8 +2,9 @@ module GettextToI18n
   class GettextI18nConvertor
     attr_accessor :text
     
-    GETTEXT_VARIABLES = /\%\{(\w+)\}*/
-    QUOTES_REGEX = /\_\(['"]([^'"]*)['"]\)/
+    QUOTES_REGEX = /\_\((['"])([^\1]*)\1\)/
+    VARIABLES_REGEX = /\%[\s]+\{(.*)\}/
+    VARIABLE_REGEX = /\s*:(\w+)\s*=>\s*(.*)/
 
     
     def initialize(text, namespace = nil)
@@ -11,38 +12,34 @@ module GettextToI18n
       @namespace = namespace
     end
     
-    # The contents of the method call
+    # gets contents of the method call
     def call_content
-      return (res = @text.match(QUOTES_REGEX)) ? res[1] : nil
+      return @text.match(QUOTES_REGEX) ? $2 : nil
     end
     
-    def content_i18n
+
+    # gets content of gettext message
+    def content_gettext
       if content = call_content
-        content.gsub!(GETTEXT_VARIABLES, '{{\1}}')
+        content.gsub!(VARIABLES_REGEX, '{{\1}}')
       else
         puts "No content: " + @text
       end
       return content
     end
     
-
-    
     # Returns the part after the method call, 
     # _('aaa' % :a => 'sdf', :b => 'agh') 
     # return :a => 'sdf', :b => 'agh'
     def variable_part
-      @variable_part_cached ||= begin
-          result = /\%[\s]+\{(.*)\}/.match(@text)
-          if result
-              result[1]
-          end
-      end
+      @variable_part ||= @text.match(VARIABLES_REGEX) ? $1 : nil
     end
     
     # Extract the variables out of a gettext variable part
     # We cannot simply split the variable part on a comma, because it
     # can contain gettext calls itself.
     # Example: :a => 'a', :b => 'b' => [":a => 'a'", ":b => 'b'"]
+    # TODO clean up if it's possible
     def get_variables_splitted
       return if variable_part.nil? 
       in_double_quote = in_single_quote = false
@@ -70,10 +67,11 @@ module GettextToI18n
       @variables_cached ||= begin
         vsplitted = get_variables_splitted
         return nil if vsplitted.nil?
-        vsplitted.map! { |v| 
-          r = v.match(/\s*:(\w+)\s*=>\s*(.*)/)
-          {:name => r[1], :value => GettextI18nConvertor.string_to_i18n(r[2], @namespace)}
-        }
+        vsplitted.map! do |variable| 
+          res = variable.match(VARIABLE_REGEX)
+          value = GettextI18nConvertor.string_to_i18n(res[2], @namespace)
+          {:name => res[1], :value => value}
+        end
       end
     end
     
@@ -81,15 +79,13 @@ module GettextToI18n
     # it is now time to construct the actual i18n call
     def to_i18n
       id = @namespace.consume_id!
-      @namespace.set_id(id, content_i18n)
-      output = "t(:#{id}"
-      if !self.variables.nil?
-          vars = self.variables.collect { |h| {:name => h[:name], :value => h[:value] }}
-          output += ", " + vars.collect {|h| ":#{h[:name]} => #{h[:value]}"}.join(", ")
+      @namespace.ids[id] = content_gettext
+      output = "t(:%s, %s%s)"
+      if vars = self.variables
+        vars.map! {|var| ":%s => %s" % [var[:name], var[:value]]}
+        vars = vars.join(', ') + ', '
       end
-      output += ", " + @namespace.to_i18n_scope
-      output += ")"
-      return output
+      return output % [id, vars, @namespace.to_i18n_scope]
     end
     
     # Takes the gettext calls out of a string and converts
