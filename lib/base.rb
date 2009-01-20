@@ -25,7 +25,7 @@ module GettextToI18n
         
         n = Namespace.new(namespace)
         
-        contents = Base.get_file_as_string(file)
+        contents = File.read(file)
         parsed << GettextI18nConvertor.string_to_i18n(contents, n)
   
         #puts parsed
@@ -49,14 +49,6 @@ module GettextToI18n
     private 
     
     
-    def self.get_file_as_string(filename)
-      data = ''
-      f = File.open(filename, "r") 
-      f.each_line do |line|
-        data += line
-      end
-      return data
-    end
     # returns a name for a file
     # example: 
     # Base.get_name('/controllers/apidoc_controller.rb', 'controller') => 'apidoc'
