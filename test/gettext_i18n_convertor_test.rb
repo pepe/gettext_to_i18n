@@ -8,8 +8,7 @@ module GettextToI18n
    
     
     def test_other_string
-      assert_equal 'a   ', GettextI18nConvertor.new("_('a   ')").contents
-      #assert_equal 'a   ', GettextI18nConvertor.new("_('a   ' % {:a => 'sdasd'})").contents
+      assert_equal 'a   ', GettextI18nConvertor.new("_('a   ')").call_content
       assert_equal ":a => 'sdasd'", GettextI18nConvertor.new("_('a   ' % {:a => 'sdasd'})").variable_part
     end
   
@@ -79,12 +78,12 @@ module GettextToI18n
       n  =GettextToI18n::Namespace.new("somenamespace")
       str = "_('The easiest way to <span class=\"highlight\">create</span> and<br /> <span class=\"highlight\">share</span> interactive floorplans')"
       t = GettextToI18n::GettextI18nConvertor.new(str, n)
-      assert_equal 'The easiest way to <span class="highlight">create</span> and<br /> <span class="highlight">share</span> interactive floorplans', t.contents
+      assert_equal 'The easiest way to <span class="highlight">create</span> and<br /> <span class="highlight">share</span> interactive floorplans', t.call_content
       puts t.text
       
       
       t = GettextToI18n::GettextI18nConvertor.new("_(\"Save\")", n)
-      assert_equal "Save", t.contents
+      assert_equal "Save", t.call_content
       
     end
     
