@@ -3,16 +3,11 @@ module GettextToI18n
   class Base
     attr_reader :translations
     LOCALE_DIR = RAILS_ROOT + '/config/locales/'
-    STANDARD_LOCALE_FILE = LOCALE_DIR + 'template.yml'
+    TEMPLATE_LOCALE_FILE = LOCALE_DIR + 'template.yml'
     DEFAULT_LANGUAGE = 'some-LAN'
 
     def initialize
       @translations = {}
-      transform_files!(Files.controller_files, :controller)
-      transform_files!(Files.model_files, :model)
-      transform_files!(Files.view_files, :view)
-      transform_files!(Files.helper_files, :helper)
-      transform_files!(Files.lib_files, :lib)
     end
     
     # Walks all files and converts them all to the new format
@@ -39,15 +34,52 @@ module GettextToI18n
       end
     end
     
-    # Dumps the translation strings into config/locales/template.yml
+    # transforms and dumps the translation strings into config/locales/template.yml
     def dump_yaml!
+      transform_files!(Files.controller_files, :controller)
+      transform_files!(Files.model_files, :model)
+      transform_files!(Files.view_files, :view)
+      transform_files!(Files.helper_files, :helper)
+      transform_files!(Files.lib_files, :lib)
+
       FileUtils.mkdir_p LOCALE_DIR
-      File.open(STANDARD_LOCALE_FILE,'w+') { |f| YAML::dump(@translations, f) } 
+      File.open(TEMPLATE_LOCALE_FILE,'w+') { |f| YAML::dump(@translations, f) } 
     end
-    
+
+    # converses po files to yml
+    def converses_po!(file)
+      po_pairs = parse_po(file)
+      
+      prepare_ymls
+
+
+    end
+
+    # parse po files and returns hash with msgid => msgstr
+    def parse_po(file)
+      parser = PoParser.new
+      data = MOFile.new
+      parser.parse(File.read(file), data)
+      return data
+    end
+
     
     private 
     
+    # prepares all ymls for namespaces
+    def prepare_ymls
+      yml = YAML::load(File.open(TEMPLATE_LOCALE_FILE))
+      #TODO move to constants maybe its own class?
+      return @namespace_ymls = {
+        :models_po => yml['some-LAN']['txt']['model'],
+        :controllers_po => yml['some-LAN']['txt']['controller'],
+        :views_po => yml['some-LAN']['txt']['view'],
+        :helpers_po => yml['some-LAN']['txt']['helper']
+      }
+
+
+    end
+
     
     # returns a name for a file
     # example: 
