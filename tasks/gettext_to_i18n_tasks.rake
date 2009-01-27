@@ -7,11 +7,20 @@ require File.dirname(__FILE__) + '/../init'
 
 namespace :gettext_to_i18n do
   
+  desc 'Creates instance of Base'
+  task :create_base do
+    @base = GettextToI18n::Base.new
+  end
+
   desc 'Transforms all of your files into the new I18n api format'
-  task :transform do
-    a = GettextToI18n::Base.new
-    a.dump_yaml!
+  task :transform => [:create_base] do
+    @base.dump_yaml!
   end
   
+  desc 'Tries to extract all what is possible from po files for languages'
+  task :converse_po_to_yml do
+    #TODO add arguments
+    @base.converse_po!('po/cs_CZ/phdstudy.po')
+  end
   
 end
